@@ -1,6 +1,6 @@
 from enum import Enum
-import ObjectBase
-import Package
+from objectBase import ObjectBase
+from package import Package
 
 
 class LockerStates(Enum):
@@ -10,7 +10,7 @@ class LockerStates(Enum):
 
 class Locker(ObjectBase):
     def __init__(self, locker_id: int):
-        super().init(locker_id)
+        super().__init__(locker_id)
         self._state = LockerStates.FREE
         self._package = None
 
@@ -30,3 +30,6 @@ class Locker(ObjectBase):
             self._state = LockerStates.FREE
             return True
         return False
+    
+    def get_package(self) -> Package:
+        return self._package

@@ -1,4 +1,4 @@
-import ObjectBase
+from objectBase import ObjectBase
 from enum import Enum
 from typing import Optional
 
@@ -11,7 +11,7 @@ class PackageStates(Enum):
 
 class Package(ObjectBase):
     def __init__(self, package_id: int, package_station_id: int):
-        super().init(package_id)
+        super().__init__(package_id)
         self._package_station_id = package_station_id
         self._state = PackageStates.IN_SORTING_PLANT
         self._loading_date: Optional[float] = None
