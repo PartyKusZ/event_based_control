@@ -10,9 +10,9 @@ class LockerStates(Enum):
 
 class Locker(ObjectBase):
     def __init__(self, locker_id: int):
+        super().init(locker_id)
         self._state = LockerStates.FREE
         self._package = None
-        self.locker_id = locker_id
 
     def get_state(self) -> LockerStates:
         return self._state
