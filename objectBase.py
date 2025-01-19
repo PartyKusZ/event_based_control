@@ -7,6 +7,5 @@ class ObjectBase(ABC):
             raise ValueError("id must be a positive integer")
         self._id = id  # Prywatny atrybut
     
-    @abstractmethod
     def get_id(self) -> int:
         return self._id

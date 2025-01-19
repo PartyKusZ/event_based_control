@@ -8,6 +8,6 @@ class Position:
     def get_position(self) -> Tuple[int, int]:
         return self.x, self.y
     
-    def set_position(self, x: int, y: int):
+    def set_position(self, x: int, y: int) -> None:
         self.x = x
         self.y = y
