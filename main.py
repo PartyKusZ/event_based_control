@@ -1,6 +1,7 @@
 import random
+import yaml
 from typing import Generator
-
+import typer
 from simpy import Environment, Process, Resource, Timeout
 from simpy.resources.resource import Request
 from simpy.rt import RealtimeEnvironment
@@ -22,9 +23,11 @@ class Drone:
 
 
 class PackageStation:
-    def __init__(self, station_id, location):
+
+    def __init__(self, station_id, position, no_of_lockers):
         self.station_id = station_id
-        self.location = location
+        self.position = position
+        self.no_of_lockers = no_of_lockers
 
 
 ########################### Placeholder Packages ###########################
@@ -138,18 +141,58 @@ class SystemEnvironment:
         self._env.run(until=until)
 
 
-if __name__ == "__main__":
-    env = RealtimeEnvironment(factor=0.2, strict=False)
+def load_config_yaml(filepath: str) -> dict:
+    """Load the YAML configuration file and return a dict."""
+    with open(filepath, "r") as f:
+        return yaml.safe_load(f)
 
-    drones = [Drone(name=f"Drone_{i}", speed=random.uniform(0.8, 1.2)) for i in range(2)]
-    stations = [
-        PackageStation(
-            station_id=i, location=(random.random() * 100, random.random() * 100)
-        )
-        for i in range(3)
-    ]
 
+app = typer.Typer()
+
+
+@app.command()
+def run_sim(
+    config_file: str = typer.Argument(..., help="Path to the YAML config file."),
+    until: int = typer.Option(100, help="How many simulation seconds to run."),
+):
+    """
+    Load drones and package stations from CONFIG_FILE, then run a SimPy simulation
+    for UNTIL simulation seconds.
+    """
+    # 1) Create environment
+    env = RealtimeEnvironment(factor=0.1)
+
+    # 2) Load config from YAML
+    config = load_config_yaml(config_file)
+
+    # 3) Build domain objects
+    drones = []
+    for d in config.get("drones", []):
+        drone_id = d["id"]
+        velocity = d["velocity"]
+        drone_name = f"Drone_{drone_id}"
+        drones.append(Drone(name=drone_name, speed=velocity))
+
+    stations = []
+    for s in config.get("package_stations", []):
+        station_id = s["id"]
+        position = tuple(s["position"])
+        lockers = s["lockers"]
+        stations.append(PackageStation(station_id, position, lockers))
+
+    # 4) Create SortingOffice and controller
     sorting_office = SortingOffice(env, drones, stations)
-
     controller = SystemEnvironment(env, sorting_office)
-    controller.run_simulation(until=100)  # run for 30 time units
+
+    # 5) Run the simulation
+    controller.run_simulation(until=until)
+
+    typer.echo(f"Simulation finished at time={env.now}.")
+
+
+def main():
+    app()
+
+
+if __name__ == "__main__":
+    main()

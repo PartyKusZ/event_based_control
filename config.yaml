@@ -1,0 +1,27 @@
+drones:
+- id: 1
+  velocity: 2.16
+- id: 2
+  velocity: 2.5
+- id: 3
+  velocity: 2.35
+- id: 4
+  velocity: 1.78
+- id: 5
+  velocity: 1.71
+package_stations:
+- id: 1
+  position:
+  - 74.55
+  - 57.06
+  lockers: 12
+- id: 2
+  position:
+  - 57.15
+  - 86.34
+  lockers: 16
+- id: 3
+  position:
+  - 73.03
+  - 45.9
+  lockers: 12
