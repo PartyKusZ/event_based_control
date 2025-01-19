@@ -1,2 +1,11 @@
+click==8.1.8
+markdown-it-py==3.0.0
+mdurl==0.1.2
+Pygments==2.19.1
+PyYAML==6.0.2
+rich==13.9.4
+shellingham==1.5.4
 simpy==4.1.1
+typer==0.15.1
 typing==3.7.4.3
+typing_extensions==4.12.2
