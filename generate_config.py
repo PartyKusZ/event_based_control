@@ -35,8 +35,8 @@ def main(
     stations = []
     for i in range(num_stations):
         station_id = i + 1
-        x = round(random.uniform(0, 100), 2)
-        y = round(random.uniform(0, 100), 2)
+        x = int(random.randint(0, 100))
+        y = int(random.uniform(0, 100))
         lockers = random.randint(5, 20)
         stations.append({"id": station_id, "position": [x, y], "lockers": lockers})
 

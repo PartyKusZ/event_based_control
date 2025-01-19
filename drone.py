@@ -8,11 +8,15 @@ class DroneStates(Enum):
     BUSY = "BUSY"
 
 
-class Drone(ObjectBase.ObjectBase):
-    def __init__(self, drone_id: int):
+class Drone(ObjectBase):
+    def __init__(self, drone_id: int, velocity: float):
         super().__init__(drone_id)
+        self._velocity = velocity
         self._state = DroneStates.IDLE
         self._package = None
+
+    def get_velocity(self) -> float:
+        return self._velocity
 
     def get_state(self) -> DroneStates:
         return self._state

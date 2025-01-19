@@ -2,7 +2,7 @@ from object_base import ObjectBase
 from position import Position
 from package import Package
 from locker import Locker, LockerStates
-from typing import List
+from typing import List, Tuple
 
 
 class PackageStation(ObjectBase):
@@ -11,6 +11,9 @@ class PackageStation(ObjectBase):
         super().__init__(id)
         self._position = position
         self._locker: List[Locker] = [Locker(i) for i in range(num_of_lockers)]
+
+    def get_position(self) -> Tuple[int, int]:
+        return self._position.get_position()
 
     def get_num_of_lockers(self) -> int:
         return len(self._locker)

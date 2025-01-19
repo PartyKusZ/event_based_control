@@ -1,44 +1,27 @@
 import random
 import yaml
-from typing import Generator
+from typing import Generator, Dict, Optional
 import typer
 from simpy import Environment, Process, Resource, Timeout
 from simpy.resources.resource import Request
 from simpy.rt import RealtimeEnvironment
+from package import Package
+from drone import Drone
+from position import Position
+from package_station import PackageStation
+import numpy as np
+from utils import *
 
 id = str
 
 
-########################### Placeholder Packages ###########################
-class Package:
-    def __init__(self, package_id, destination_station_id):
-        self.package_id = package_id
-        self.destination_station_id = destination_station_id
-
-
-class Drone:
-    def __init__(self, name, speed=1.0):
-        self.name = name
-        self.speed = speed
-
-
-class PackageStation:
-
-    def __init__(self, station_id, position, no_of_lockers):
-        self.station_id = station_id
-        self.position = position
-        self.no_of_lockers = no_of_lockers
-
-
-########################### Placeholder Packages ###########################
-
-
 class SortingOffice:
+
     def __init__(
         self,
         env: Environment,
-        drones: list[Drone],
-        package_stations: list[PackageStation],
+        drones: Dict[id, Drone],
+        package_stations: Dict[id, PackageStation],
     ):
         self._env = env
         self._drones = drones
@@ -48,22 +31,44 @@ class SortingOffice:
         self._undelivered_packages = []
         self._delivered_packages = []
 
-        # Placeholder, calculate the distances from the position of each package station
-        self._station_distances_lut = {
-            station.station_id: random.uniform(5.0, 15.0) for station in package_stations
-        }
+        self._station_distances_lut = generate_distance_lut(package_stations)
 
-        # Drones are a resource
         self._drone_resource = Resource(env, capacity=len(drones))
 
-    def _get_distance(self, package_station_id: id) -> float:
-        """Return the distance from the sorting office to the station."""
-        return self._station_distances_lut.get(package_station_id, 10.0)
-
-    def _get_closest_available_package_station(
-        self,
-    ) -> id:
+    def _get_closest_available_package_station(self, station_id: int) -> id:
         """If the requested package station is full, get the id of the closest available package station"""
+        distances_from_A = self._station_distances_lut.get(station_id, {})
+
+        # Filter out entries for the sorting center (0) and the station itself
+        filtered = {
+            station_id: dist
+            for station_id, dist in distances_from_A.items()
+            if isinstance(station_id, int)
+            and station_id != 0
+            and station_id != station_id
+        }
+
+        if not filtered:
+            return None  # No valid stations to compare
+
+        # Find the station with the minimum distance
+        closest_station_id = min(filtered, key=filtered.get)
+        return closest_station_id
+
+    def _get_distance_from_sorting_centre(self, station_id: int) -> Optional[float]:
+        """
+        Returns the distance from the sorting centre (ID = 0) to the given station_id.
+        If the lookup doesn't exist, returns None.
+        """
+        # Check if station_id and '0' exist in the LUT
+        if station_id not in self._station_distances_lut:
+            return None
+
+        station_distances = self._station_distances_lut[station_id]
+        if 0 not in station_distances:
+            return None
+
+        return station_distances[0]
 
     def _add_package(self, package: Package) -> None:
         """Add a package to the queue of packages to send."""
@@ -75,7 +80,7 @@ class SortingOffice:
     ) -> Generator[Request | Timeout, None, None]:
         """Process generator to send a package to the given station using a drone."""
         print(
-            f"[t={self._env.now}] Sending package {package.package_id} to station {station.station_id}..."
+            f"[t={self._env.now}] Sending package {package.get_id()} to station {station.get_id()}..."
         )
 
         # Request a drone from the resource pool
@@ -83,19 +88,19 @@ class SortingOffice:
             yield req  # Wait until a drone is free
 
             # Randomly choose from available drones
-            chosen_drone = random.choice(self._drones)
+            chosen_drone = random.choice(list(self._drones.values()))
             print(
-                f"[t={self._env.now}] Drone '{chosen_drone.name}' picked up package {package.package_id}."
+                f"[t={self._env.now}] Drone '{chosen_drone.get_id()}' picked up package {package.get_id()}."
             )
 
             # Travel time is distance ÷ speed.
-            distance = self._get_distance(station.station_id)
+            distance = self._get_distance_from_sorting_centre(station.get_id())
             travel_time = distance / chosen_drone.speed
 
             # Simulate traveling to station
             yield self._env.timeout(travel_time)
             print(
-                f"[t={self._env.now}] Package {package.package_id} delivered to station {station.station_id}."
+                f"[t={self._env.now}] Package {package.get_id()} delivered to station {station.get_id()}."
             )
 
             # Update delivered list
@@ -166,19 +171,18 @@ def run_sim(
     config = load_config_yaml(config_file)
 
     # 3) Build domain objects
-    drones = []
+    drones = {}
     for d in config.get("drones", []):
         drone_id = d["id"]
         velocity = d["velocity"]
-        drone_name = f"Drone_{drone_id}"
-        drones.append(Drone(name=drone_name, speed=velocity))
+        drones[drone_id] = Drone(drone_id, velocity)
 
-    stations = []
+    stations = {}
     for s in config.get("package_stations", []):
         station_id = s["id"]
-        position = tuple(s["position"])
+        position = Position(tuple(s["position"])[0], tuple(s["position"])[1])
         lockers = s["lockers"]
-        stations.append(PackageStation(station_id, position, lockers))
+        stations[station_id] = PackageStation(station_id, position, lockers)
 
     # 4) Create SortingOffice and controller
     sorting_office = SortingOffice(env, drones, stations)
