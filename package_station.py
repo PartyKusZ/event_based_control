@@ -1,8 +1,9 @@
-from objectBase import * 
-from Position import *
-from package import *
-from locker import *
+from object_base import ObjectBase
+from position import Position
+from package import Package
+from locker import Locker, LockerStates
 from typing import List
+
 
 class PackageStation(ObjectBase):
 
@@ -13,18 +14,24 @@ class PackageStation(ObjectBase):
 
     def get_num_of_lockers(self) -> int:
         return len(self._locker)
-    
+
     def get_num_of_free_lockers(self) -> int:
-        return len([locker for locker in self._locker if locker.get_state() == LockerStates.FREE])
-    
+        return len(
+            [
+                locker
+                for locker in self._locker
+                if locker.get_state() == LockerStates.FREE
+            ]
+        )
+
     def load_package(self, package: Package) -> None:
         for locker in self._locker:
             if locker.get_state() == LockerStates.FREE:
-                 locker.load_package(package)
-                 break
+                locker.load_package(package)
+                break
             else:
                 raise ValueError("There is no free locker")
-            
+
     def remove_package(self, package: Package) -> None:
         for locker in self._locker:
             if locker.get_state() == LockerStates.OCCUPIED:

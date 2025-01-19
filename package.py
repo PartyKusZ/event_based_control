@@ -1,6 +1,7 @@
-from objectBase import ObjectBase
+from object_base import ObjectBase
 from enum import Enum
 from typing import Optional
+
 
 class PackageStates(Enum):
     IN_SORTING_PLANT = "IN_SORTING_PLANT"
@@ -8,6 +9,7 @@ class PackageStates(Enum):
     IN_PACKAGE_STATION = "IN_PACKAGE_STATION"
     COLLECTED = "COLLECTED"
     EXPIRED = "EXPIRED"
+
 
 class Package(ObjectBase):
     def __init__(self, package_id: int, package_station_id: int):

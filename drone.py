@@ -1,10 +1,12 @@
 from enum import Enum
-import ObjectBase
-import Package
+from object_base import ObjectBase
+from package import Package
+
 
 class DroneStates(Enum):
     IDLE = "IDLE"
     BUSY = "BUSY"
+
 
 class Drone(ObjectBase.ObjectBase):
     def __init__(self, drone_id: int):
