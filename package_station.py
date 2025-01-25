@@ -1,8 +1,9 @@
-from object_base import ObjectBase
-from position import Position
-from package import Package
-from locker import Locker, LockerStates
 from typing import List, Tuple
+
+from locker import Locker, LockerStates
+from object_base import ObjectBase
+from package import Package
+from position import Position
 
 
 class PackageStation(ObjectBase):

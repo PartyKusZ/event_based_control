@@ -1,19 +1,19 @@
+import csv
 import random
-import yaml
+from pathlib import Path
 from queue import Queue
-from typing import Generator, Dict, Optional, List
+from typing import Dict, Generator, Optional
+
 import typer
+import yaml
+from drone import Drone, DroneStates
+from package import Package
+from package_station import PackageStation
+from position import Position
 from simpy import Environment, Process, Resource, Timeout
 from simpy.resources.resource import Request
 from simpy.rt import RealtimeEnvironment
-from package import Package
-from drone import Drone, DroneStates
-from position import Position
-from package_station import PackageStation
-import numpy as np
 from utils import *
-
-id = int
 
 
 class SortingOffice:
@@ -21,47 +21,37 @@ class SortingOffice:
     def __init__(
         self,
         env: Environment,
-        drones: Dict[id, Drone],
-        package_stations: Dict[id, PackageStation],
+        drones: Dict[int, Drone],
+        package_stations: Dict[int, PackageStation],
     ):
         self._env = env
         self._drones = drones
         self._package_stations = package_stations
 
-        self._packages_to_send_queue: Queue[Package] = Queue()
-        self._undelivered_packages: List[Package] = []
-        self._delivered_packages: List[Package] = []
-
         self._station_distances_lut = generate_distance_lut(package_stations)
 
+        self._packages_to_send_queue: Queue[Package] = Queue()
         self._drone_resource = Resource(env, capacity=len(drones))
+        self._csv_filename = Path("package_deliveries.csv")
 
-    def _get_closest_available_package_station(self, station_id: int) -> id:
-        """If the requested package station is full, get the id of the closest available package station"""
-        distances_from_A = self._station_distances_lut.get(station_id, {})
-
-        # Filter out entries for the sorting center (0) and the station itself
-        filtered = {
-            station_id: dist
-            for station_id, dist in distances_from_A.items()
-            if isinstance(station_id, int)
-            and station_id != 0
-            and station_id != station_id
-        }
-
-        if not filtered:
-            return None  # No valid stations to compare
-
-        # Find the station with the minimum distance
-        closest_station_id = min(filtered, key=filtered.get)
-        return closest_station_id
+        with self._csv_filename.open(mode="w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(
+                [
+                    "Dispatch Time",
+                    "Package ID",
+                    "Station ID",
+                    "Drone ID",
+                    "Delivery Time",
+                    "Collection Time",
+                ]
+            )
 
     def _get_distance_from_sorting_centre(self, station_id: int) -> Optional[float]:
         """
         Returns the distance from the sorting centre (ID = 0) to the given station_id.
         If the lookup doesn't exist, returns None.
         """
-        # Check if station_id and '0' exist in the LUT
         if station_id not in self._station_distances_lut:
             return None
 
@@ -74,13 +64,15 @@ class SortingOffice:
     def _add_package(self, package: Package) -> None:
         """Add a package to the queue of packages to send."""
         self._packages_to_send_queue.put(package)
-        print(f"[t={self._env.now}] Package {package.get_id()} added to the queue.")
+        print(
+            f"[t={round(self._env.now, 2)}] Package {package.get_id()} added to the queue."
+        )
         self._dispatch_package()
 
     def _dispatch_package(self) -> None:
         """Attempt to send a package from the queue if a drone is available."""
         while not self._packages_to_send_queue.empty():
-            drone_id = self._choose_first_available_drone()
+            drone_id = self._get_first_free_drone_id()
             if drone_id:
                 package = (
                     self._packages_to_send_queue.get()
@@ -96,24 +88,22 @@ class SortingOffice:
         self, package: Package, station_id: int, assigned_drone_id: int
     ) -> Generator[Request | Timeout, None, None]:
         """Process generator to send a package to the given station using a drone."""
-        # Request a drone from the resource pool
-
         with self._drone_resource.request() as req:
-            yield req  # Wait until a drone is free
+            yield req
 
             print(
-                f"[t={self._env.now}] Package '{package.get_id()}' assigned to drone '{assigned_drone_id}'."
+                f"[t={round(self._env.now, 2)}] Package '{package.get_id()}' assigned to drone '{assigned_drone_id}'."
             )
 
             print(
-                f"[t={self._env.now}] Sending package {package.get_id()} to station {station_id}..."
+                f"[t={round(self._env.now, 2)}] Sending package {package.get_id()} to station {station_id}..."
             )
 
             self._env.process(
                 self._complete_delivery(assigned_drone_id, package, station_id)
             )
 
-    def _choose_first_available_drone(self) -> Optional[id]:
+    def _get_first_free_drone_id(self) -> Optional[int]:
         """Choose first available drone, if no drones available return None"""
         for id, drone in self._drones.items():
             if drone.get_state() == DroneStates.IDLE:
@@ -122,37 +112,67 @@ class SortingOffice:
         return None
 
     def _complete_delivery(self, drone_id: id, package: Package, station_id: int):
-        """SimPy process: Handles delivery and frees up the drone afterward."""
-        # Travel time is distance ÷ speed.
-        distance = self._get_distance_from_sorting_centre(station_id)
+        """Handle delivery, free up the drone after delivery is complete."""
+        distance = (
+            self._get_distance_from_sorting_centre(station_id) * 2
+        )  # There and back
         travel_time = distance / self._drones[drone_id].get_velocity()
 
         print(
-            f"[t={self._env.now}] Drone '{drone_id}' is traveling... Estimated time: {travel_time:.2f}s"
+            f"[t={round(self._env.now, 2)}] Drone '{drone_id}' is traveling... Estimated time: {travel_time:.2f}s"
         )
 
-        yield self._env.timeout(travel_time)  # Allow other events to run
+        package.set_delivery_time(self._env.now + (travel_time / 2))
+        collection_time = self._env.now + (travel_time / 2) + random.uniform(5.0, 25.0)
+        if collection_time > package.get_expiration_time():
+            collection_time = None
+
+        self._log_package(
+            round(self._env.now, 2),
+            package.get_id(),
+            package.get_package_station_id(),
+            drone_id,
+            round(package.get_delivery_time(), 2),
+            round(collection_time, 2) if collection_time is not None else None,
+        )
+
+        # Drone unavailable until it returns
+        yield self._env.timeout(travel_time)
 
         print(
-            f"[t={self._env.now}] Package {package.get_id()} delivered to station {station_id}."
+            f"[t={round(self._env.now, 2)}] Package {package.get_id()} delivered to station {station_id}."
         )
-        self._delivered_packages.append(package)
 
         if self._drones[drone_id].remove_package():
-            print(f"[t={self._env.now}] Drone '{drone_id}' is available again.")
+            print(
+                f"[t={round(self._env.now, 2)}] Drone '{drone_id}' is available again."
+            )
         else:
             raise ValueError
 
         self._dispatch_package()
 
-    def _remove_not_received_package(self, package_id, station: PackageStation) -> None:
-        """If a package wasn't received, remove it."""
-        self._undelivered_packages = [
-            p for p in self._undelivered_packages if p.package_id != package_id
-        ]
-        print(
-            f"[t={self._env.now}] Removed package {package_id} from undelivered list for station {station.station_id}."
-        )
+    def _log_package(
+        self,
+        time_of_dispatch: float,
+        package_id: int,
+        station_id: int,
+        drone_id: int,
+        delivery_time: float,
+        collection_time: Optional[None] = None,
+    ):
+        with self._csv_filename.open(mode="a", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(
+                [
+                    time_of_dispatch,
+                    package_id,
+                    station_id,
+                    drone_id,
+                    delivery_time,
+                    collection_time,
+                ]
+            )
 
 
 class SystemEnvironment:
@@ -171,15 +191,14 @@ class SystemEnvironment:
                 self._sorting_office._add_package(package)
 
                 package_id += 1
-                # Wait a random amount of time between 1 and 10 seconds
+
+                # Wait a random amount of time between each package
                 delay = random.randint(10, 20)
 
                 yield self._env.timeout(delay)
 
-        # Start the process that adds/sends packages
         self._env.process(add_and_send_packages())
 
-        # Run the simulation until the specified time
         self._env.run(until=until)
 
 
@@ -194,15 +213,16 @@ app = typer.Typer()
 
 @app.command()
 def run_sim(
-    config_file: str = typer.Argument(..., help="Path to the YAML config file."),
+    config_file: Path = typer.Argument(..., help="Path to the YAML config file."),
     until: int = typer.Option(200, help="How many simulation seconds to run."),
+    factor: float = typer.Option(1.0, help="Simulation time scaling factor."),
 ):
     """
     Load drones and package stations from CONFIG_FILE, then run a SimPy simulation
     for UNTIL simulation seconds.
     """
     # 1) Create environment
-    env = RealtimeEnvironment(factor=0.1)
+    env = RealtimeEnvironment(factor=factor)
 
     # 2) Load config from YAML
     config = load_config_yaml(config_file)

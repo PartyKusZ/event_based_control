@@ -1,4 +1,5 @@
 from enum import Enum
+
 from object_base import ObjectBase
 from package import Package
 

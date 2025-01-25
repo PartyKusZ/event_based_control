@@ -1,7 +1,7 @@
-import numpy as np
-from package_station import PackageStation
-from typing import Dict, Union
 import math
+from typing import Dict, Union
+
+from package_station import PackageStation
 
 
 def generate_distance_lut(
@@ -26,32 +26,26 @@ def generate_distance_lut(
             ...
         }
     """
-    # Initialize the LUT
     distance_lut: Dict[int, Dict[Union[int, str], float]] = {}
 
-    # Precompute the distance from the sorting centre (0, 0) for each station
     for station_id, station in stations.items():
         x, y = station.get_position()
         dist_from_centre = math.dist((0, 0), (x, y))
 
-        # Initialize sub-dict for this station
         distance_lut[station_id] = {0: dist_from_centre}
 
-    # Compute pairwise distances among stations
     station_ids = list(stations.keys())
 
     for i in range(len(station_ids)):
         for j in range(i + 1, len(station_ids)):
             id_a = station_ids[i]
             id_b = station_ids[j]
-            # Positions
+
             x_a, y_a = stations[id_a].get_position()
             x_b, y_b = stations[id_b].get_position()
 
-            # Euclidean distance
             dist_ab = math.dist((x_a, y_a), (x_b, y_b))
 
-            # Store in both directions
             distance_lut[id_a][id_b] = dist_ab
             distance_lut[id_b][id_a] = dist_ab
 
