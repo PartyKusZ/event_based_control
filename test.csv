@@ -1,0 +1,12 @@
+package_id;time_of_arrival;package_station_id;sending_time;arrival_in_package_locker_time;was_received_bool;receive_time
+0;9.32;3;9.51;9.65;True;11.42
+1;18.66;3;18.73;18.79;False;
+2;23.3;3;23.39;23.57;True;24.5
+3;32.88;2;32.98;33.13;True;34.21
+4;36.25;3;36.43;36.61;False;
+5;45.45;2;45.51;45.57;True;47.12
+6;54.53;3;54.65;54.67;True;56.2
+7;60.74;1;60.85;60.98;False;
+8;65.99;2;66.1;66.29;False;
+9;75.83;3;75.86;75.94;True;76.44
+10;84.93;1;84.99;85.07;True;86.87
