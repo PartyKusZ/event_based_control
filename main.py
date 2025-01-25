@@ -111,7 +111,9 @@ class SortingOffice:
 
         return None
 
-    def _complete_delivery(self, drone_id: id, package: Package, station_id: int):
+    def _complete_delivery(
+        self, drone_id: id, package: Package, station_id: int
+    ) -> Generator[Timeout, None, None]:
         """Handle delivery, free up the drone after delivery is complete."""
         distance = (
             self._get_distance_from_sorting_centre(station_id) * 2
@@ -147,8 +149,6 @@ class SortingOffice:
             print(
                 f"[t={round(self._env.now, 2)}] Drone '{drone_id}' is available again."
             )
-        else:
-            raise ValueError
 
         self._dispatch_package()
 
@@ -160,7 +160,7 @@ class SortingOffice:
         drone_id: int,
         delivery_time: float,
         collection_time: Optional[None] = None,
-    ):
+    ) -> None:
         with self._csv_filename.open(mode="a", newline="") as file:
             writer = csv.writer(file)
             writer.writerow(
