@@ -73,7 +73,7 @@ class SortingOffice:
     def _add_package(self, package: Package) -> None:
         """Add a package to the queue of packages to send."""
         self._packages_to_send.append(package)
-        print(f"[t={self._env.now}] Package {package.package_id} added to the queue.")
+        print(f"[t={self._env.now}] Package {package.get_id()} added to the queue.")
 
     def _send_package(
         self, package: Package, station: PackageStation
@@ -95,7 +95,7 @@ class SortingOffice:
 
             # Travel time is distance ÷ speed.
             distance = self._get_distance_from_sorting_centre(station.get_id())
-            travel_time = distance / chosen_drone.speed
+            travel_time = distance / chosen_drone.get_velocity()
 
             # Simulate traveling to station
             yield self._env.timeout(travel_time)
@@ -125,9 +125,11 @@ class SystemEnvironment:
         def add_and_send_packages() -> Generator[Process | Timeout, None, None]:
             package_id = 1
             while True:
-                station = random.choice(self._sorting_office._package_stations)
+                station: PackageStation = random.choice(
+                    list(self._sorting_office._package_stations.values())
+                )
 
-                package = Package(package_id, station.station_id)
+                package = Package(package_id, station.get_id())
                 self._sorting_office._add_package(package)
 
                 yield self._env.process(
