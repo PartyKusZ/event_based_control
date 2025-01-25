@@ -176,9 +176,18 @@ class SortingOffice:
 
 
 class SystemEnvironment:
-    def __init__(self, env: Environment, sorting_office: SortingOffice):
+
+    def __init__(
+        self,
+        env: Environment,
+        sorting_office: SortingOffice,
+        random_time_lower_bound: int,
+        random_time_upper_bound: int,
+    ):
         self._env = env
         self._sorting_office = sorting_office
+        self._random_time_lower_bound = random_time_lower_bound
+        self._random_time_upper_bound = random_time_upper_bound
 
     def run_simulation(self, until: int = 50) -> None:
         def add_and_send_packages() -> Generator[Process | Timeout, None, None]:
@@ -193,7 +202,9 @@ class SystemEnvironment:
                 package_id += 1
 
                 # Wait a random amount of time between each package
-                delay = random.randint(10, 20)
+                delay = random.randint(
+                    self._random_time_lower_bound, self._random_time_upper_bound
+                )
 
                 yield self._env.timeout(delay)
 
@@ -216,6 +227,12 @@ def run_sim(
     config_file: Path = typer.Argument(..., help="Path to the YAML config file."),
     until: int = typer.Option(200, help="How many simulation seconds to run."),
     factor: float = typer.Option(1.0, help="Simulation time scaling factor."),
+    random_time_ub: int = typer.Option(
+        10, help="Lower bound of randomized package generation."
+    ),
+    random_time_lb: int = typer.Option(
+        20, help="upper bound of randomized package generation."
+    ),
 ):
     """
     Load drones and package stations from CONFIG_FILE, then run a SimPy simulation
@@ -243,7 +260,7 @@ def run_sim(
 
     # 4) Create SortingOffice and controller
     sorting_office = SortingOffice(env, drones, stations)
-    controller = SystemEnvironment(env, sorting_office)
+    controller = SystemEnvironment(env, sorting_office, random_time_lb, random_time_ub)
 
     # 5) Run the simulation
     controller.run_simulation(until=until)
