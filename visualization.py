@@ -41,6 +41,34 @@ class Action:
             )
             actions.append(action)
         return actions
+    
+class Controller:
+    def __init__(self, 
+                 drones: dict[Drone], 
+                 stations: dict[PackageStation],
+                 actions: List[Action]):
+        self._drones = drones
+        self._stations = stations
+        self._actions = actions
+        self._drone_action = 0    
+        self._delivery_action = 0
+        self._collection_action = 0
+        
+    def simulate(self,current_time: float, delta_time: float):
+        if self._actions[self._drone_action]._dispatch_time <= current_time:
+            self._drones[self._actions[self._drone_action]._drone_id].set_destination(
+                self._stations[self._actions[self._drone_action]._station_id].get_position()[0],
+                self._stations[self._actions[self._drone_action]._station_id].get_position()[1]   
+            )
+            self._drone_action += 1
+        if self._actions[self._delivery_action]._delivery_time <= current_time:
+            self._stations[self._actions[self._delivery_action]._station_id].update(PackageStationVisualizer.INCREASE)
+            self._delivery_action += 1
+        if self._actions[self._collection_action]._collection_time == float("inf"):
+            self._collection_action += 1
+        if self._actions[self._collection_action]._collection_time <= current_time:
+            self._stations[self._actions[self._collection_action]._station_id].update(PackageStationVisualizer.DECREASE)
+            self._collection_action += 1
         
 
 def load_config_yaml(filepath: str)-> dict:
@@ -98,7 +126,9 @@ def run(config_file_yaml: Path = typer.Argument(..., help="Path to the YAML conf
     start_time = pygame.time.get_ticks()
     
     actions = Action.get_actions(simulation)
-    drones[1].set_destination(stations[7].get_position()[0], stations[7].get_position()[1])
+    
+    
+    controller = Controller(drones, stations, actions)
     while True:
         
         current_time = (pygame.time.get_ticks() - start_time) / 1000.0 * speed_factor
@@ -115,10 +145,9 @@ def run(config_file_yaml: Path = typer.Argument(..., help="Path to the YAML conf
             
         sorting_office.draw(screen)
         sorting_office.update()
-        
+        controller.simulate(current_time, delta_time)
         for station in stations.values():
             station.draw(screen)
-            station.update()
 
         for drone in drones.values():
             drone.draw(screen)
@@ -126,6 +155,7 @@ def run(config_file_yaml: Path = typer.Argument(..., help="Path to the YAML conf
         
     
         pygame.display.flip()
+
         
 
 
