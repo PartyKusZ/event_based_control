@@ -1,16 +1,23 @@
 from enum import Enum
-import ObjectBase
-import Package
+
+from object_base import ObjectBase
+from package import Package
+
 
 class DroneStates(Enum):
     IDLE = "IDLE"
     BUSY = "BUSY"
 
-class Drone(ObjectBase.ObjectBase):
-    def __init__(self, drone_id: int):
+
+class Drone(ObjectBase):
+    def __init__(self, drone_id: int, velocity: float):
         super().__init__(drone_id)
+        self._velocity = velocity
         self._state = DroneStates.IDLE
         self._package = None
+
+    def get_velocity(self) -> float:
+        return self._velocity
 
     def get_state(self) -> DroneStates:
         return self._state

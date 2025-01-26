@@ -1,5 +1,6 @@
 from enum import Enum
-from objectBase import ObjectBase
+
+from object_base import ObjectBase
 from package import Package
 
 
@@ -30,6 +31,6 @@ class Locker(ObjectBase):
             self._state = LockerStates.FREE
             return True
         return False
-    
+
     def get_package(self) -> Package:
         return self._package
