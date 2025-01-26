@@ -1,53 +1,47 @@
+from  __future__  import annotations
 import yaml
 import csv 
 import typer
 from collections import defaultdict
 from pathlib import Path
-from drone import Drone
-from package_station import PackageStation
 from position import Position
 import pygame
+from typing import List
+from visualiztion_objects import *
 
-class DroneVisualizer(Drone):
-    def __init__(self, drone_id: int, velocity: float):
-        super().__init__(drone_id, velocity)
-        self._position = Position(0, 0)
-        self._image = pygame.image.load("drone.png")
 
-    def get_position(self):
-        return self._position.get_position()
-    def draw(self, screen):
-        screen.blit(self._image, self.get_position())
 
-    def update(self):
-        pass
-
-class PackageStationVisualizer(PackageStation):
-    def __init__(self, id: int, position: Position, num_of_lockers: int):
-        super().__init__(id, position, num_of_lockers)
-        self._image = pygame.image.load("package_station.png")
-
-    def draw(self, screen):
-        screen.blit(self._image, self.get_position())
-    
-    def update(self):
-        pass
-
-class SortingOfficeVisualizer:
-    def __init__(self, position: Position = Position(0, 0)):
-        self._position = position
-        self._image = pygame.image.load("office.png")
-    
-    def get_position(self):
-        return self._position.get_position()
-    def draw(self, screen):
-        screen.blit(self._image, self.get_position())
-
-    def update(self):
-        pass
+class Action:
+    def __init__(self, 
+                 dispatch_time: float, 
+                 package_id: int, 
+                 station_id: int, 
+                 drone_id: int, 
+                 delivery_time: float, 
+                 collection_time: float):
         
-    
+        self._dispatch_time = dispatch_time
+        self._package_id = package_id
+        self._station_id = station_id
+        self._drone_id = drone_id
+        self._delivery_time = delivery_time
+        self._collection_time = collection_time
+    @staticmethod
 
+    def get_actions(simulation: dict) -> List[Action]:
+        actions = []
+        for i in range(len(simulation["Dispatch Time"])):
+            action = Action(
+                float(simulation["Dispatch Time"][i]),
+                int(simulation["Package ID"][i]),
+                int(simulation["Station ID"][i]),
+                int(simulation["Drone ID"][i]),
+                float(simulation["Delivery Time"][i]),
+                float(simulation["Collection Time"][i]) if simulation["Collection Time"][i] != ""  else float("inf")
+            )
+            actions.append(action)
+        return actions
+        
 
 def load_config_yaml(filepath: str)-> dict:
     with open(filepath, "r") as f:
@@ -78,7 +72,7 @@ def run(config_file_yaml: Path = typer.Argument(..., help="Path to the YAML conf
     drones= {}
     for d in config.get("drones", []):
         drone_id = d["id"]
-        velocity = d["velocity"] * speed_factor
+        velocity = d["velocity"] * speed_factor * map_size_factor
         drones[drone_id] = DroneVisualizer(drone_id, velocity)
     
     stations = {}
@@ -98,14 +92,22 @@ def run(config_file_yaml: Path = typer.Argument(..., help="Path to the YAML conf
     screen_y = max(station.get_position()[1] for station in stations.values()) + 100
 
     screen = pygame.display.set_mode((screen_x, screen_y))
-    screen.fill((255, 255, 255))
     pygame.display.set_caption("Air Post")
     clock = pygame.time.Clock()
 
     start_time = pygame.time.get_ticks()
     
-
+    actions = Action.get_actions(simulation)
+    drones[1].set_destination(stations[7].get_position()[0], stations[7].get_position()[1])
     while True:
+        
+        current_time = (pygame.time.get_ticks() - start_time) / 1000.0 * speed_factor
+        delta_time = clock.tick(60) / 1000.0 
+        
+        print(current_time)
+
+        screen.fill((255, 255, 255))
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -120,11 +122,10 @@ def run(config_file_yaml: Path = typer.Argument(..., help="Path to the YAML conf
 
         for drone in drones.values():
             drone.draw(screen)
-            drone.update()
+            drone.update(delta_time)
         
     
         pygame.display.flip()
-        clock.tick(60)
         
 
 
