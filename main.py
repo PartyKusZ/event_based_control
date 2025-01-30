@@ -44,6 +44,7 @@ class SortingOffice:
                     "Drone ID",
                     "Delivery Time",
                     "Collection Time",
+                    "Postage Time"
                 ]
             )
 
@@ -135,6 +136,7 @@ class SortingOffice:
             package.get_package_station_id(),
             drone_id,
             round(package.get_delivery_time(), 2),
+            package._postage_time,
             round(collection_time, 2) if collection_time is not None else None,
         )
 
@@ -159,6 +161,7 @@ class SortingOffice:
         station_id: int,
         drone_id: int,
         delivery_time: float,
+        postage_time: float,
         collection_time: Optional[None] = None,
     ) -> None:
         with self._csv_filename.open(mode="a", newline="") as file:
@@ -171,6 +174,7 @@ class SortingOffice:
                     drone_id,
                     delivery_time,
                     collection_time,
+                    postage_time
                 ]
             )
 
@@ -197,6 +201,7 @@ class SystemEnvironment:
                     list(self._sorting_office._package_stations.values())
                 )
                 package = Package(package_id, station.get_id())
+                package._postage_time = self._env.now
                 self._sorting_office._add_package(package)
 
                 package_id += 1
@@ -228,10 +233,10 @@ def run_sim(
     until: int = typer.Option(200, help="How many simulation seconds to run."),
     factor: float = typer.Option(1.0, help="Simulation time scaling factor."),
     random_time_ub: int = typer.Option(
-        10, help="Lower bound of randomized package generation."
+        20, help="Lower bound of randomized package generation."
     ),
     random_time_lb: int = typer.Option(
-        20, help="upper bound of randomized package generation."
+        10, help="upper bound of randomized package generation."
     ),
 ):
     """
