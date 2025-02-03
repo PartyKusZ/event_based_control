@@ -1,0 +1,4 @@
+X01
+[img]question_19.png[/img]
+True
+False
