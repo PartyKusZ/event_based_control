@@ -9,3 +9,7 @@ simpy==4.1.1
 typer==0.15.1
 typing==3.7.4.3
 typing_extensions==4.12.2
+pygame==2.1.2
+matplotlib==3.5.1
+numpy==1.22.0
+

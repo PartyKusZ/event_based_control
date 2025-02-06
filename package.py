@@ -20,6 +20,7 @@ class Package(ObjectBase):
         self._package_station_id = package_station_id
         self._state = PackageStates.IN_SORTING_PLANT
         self._expiration_timeout = expiration_timeout
+        self._postage_time: Optional[float] = None
         self._delivery_time: Optional[float] = None
         self._expiration_time: Optional[float] = None
 
@@ -42,3 +43,6 @@ class Package(ObjectBase):
 
     def get_expiration_time(self) -> float:
         return self._expiration_time
+
+    def get_postage_time(self) -> Optional[float]:
+        return self._postage_time
